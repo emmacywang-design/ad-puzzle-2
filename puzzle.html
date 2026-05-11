@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Puzzle A | 可口可樂城市瓶</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── 手機外框（對應 Figma 640×1136 design，縮放到 375 寬 → 高度 ≈666）── */
+    .phone-frame {
+      width: 375px;
+      height: 666px;
+      /* 1136 × (375/640) ≈ 665.6 → 666，維持原始比例 */
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+      /* 限制整個互動區塊在 375×666 內，超出部分隱藏 */
+    }
+
+    /* ═══════════════════════════════════════
+   SUPPLIER WEB（上方文章區）
+═══════════════════════════════════════ */
+    .supplier-web {
+      width: 375px;
+      height: 197px;
+      /* 272 design × 0.585 + 部分 gap，讓 article + banner(469) = 666 */
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+      /* 過長內容裁切，確保不溢出 phone-frame */
+    }
+
+    /* 文章背景圖（Figma: img04, h=200px in 640px design → 117px @375) */
+    .article-hero {
+      width: 100%;
+      height: 117px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .article-hero img {
+      width: 70%;
+      height: 285px;
+      /* 117 / 0.41 ≈ original crop */
+      object-fit: cover;
+      object-position: center 0%;
+      position: absolute;
+      top: -170px;
+    }
+
+    /* 文章內文 */
+    .article-body {
+      padding: 14px 20px 16px;
+    }
+
+    .article-body p {
+      font-size: 13px;
+      line-height: 1.85;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    /* 關閉按鈕（Figma: left=16, top=280 in 640 → left=9, top=164 in 375） */
+    .btn-close {
+      position: absolute;
+      left: 9px;
+      top: 164px;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .btn-close img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* ═══════════════════════════════════════
+   AD BANNER（640×800 → 375×469）
+═══════════════════════════════════════ */
+    .ad-banner {
+      width: 375px;
+      height: 469px;
+      position: relative;
+      overflow: hidden;
+      background: #6b1f19;
+      flex-shrink: 0;
+    }
+
+    /* 頂部漸層 bar（Figma: h=107 → 63) */
+    .banner-top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 63px;
+      background: linear-gradient(90deg, #ecbec9 0%, #fddce7 100%);
+      z-index: 1;
+    }
+
+    /* 底部漸層 bar（Figma: top=717, h=83 → top=420, h=49) */
+    .banner-bottom-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 49px;
+      background: linear-gradient(to right, #6d1e19, #852421);
+      z-index: 1;
+    }
+
+    /* 主背景圖（img45, 全滿，有142%高度裁切）*/
+    .banner-bg-img {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .banner-bg-img img {
+      position: absolute;
+      width: 100%;
+      height: 142%;
+      top: -43%;
+      left: 0;
+      object-fit: cover;
+    }
+
+    /* image3 裝飾（Figma: left=-301, top=0, w=576, h=152 → left=-176, w=337, h=89) */
+    .banner-deco-left {
+      position: absolute;
+      left: -176px;
+      top: 0;
+      width: 337px;
+      height: 89px;
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .banner-deco-left img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* image2（Figma: left=301, top=0, w=339, h=160 → left=176, w=199, h=94) */
+    .banner-deco-right {
+      position: absolute;
+      left: 176px;
+      top: 0;
+      width: 199px;
+      height: 94px;
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .banner-deco-right img {
+      position: absolute;
+      width: 113%;
+      height: 103%;
+      top: -1.5%;
+      left: -5.9%;
+      object-fit: cover;
+    }
+
+    /* MARK 遮罩（Figma: left=53, top=152, w=237, h=421 → left=31, top=89, w=139, h=247) */
+    .mark-overlay {
+      position: absolute;
+      left: 31px;
+      top: 89px;
+      width: 139px;
+      height: 247px;
+      z-index: 10;
+      transition: opacity 0.45s ease, transform 0.45s ease;
+      pointer-events: none;
+    }
+
+    .mark-overlay img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .mark-overlay.hidden {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    /* ═══════════════════════════════════════
+   ARROW 虛線箭頭
+   Figma: left=211px/top=394px from banner, w=89.815/h=244.721 → ×0.5859
+   image: 263.682×22.092px, rotate=-110.15deg
+═══════════════════════════════════════ */
+    .arrow-wrapper {
+      position: absolute;
+      left: 124px;
+      /* 211 × 0.5859 */
+      top: 200px;
+      /* 394 × 0.5859, relative to banner */
+      width: 53px;
+      /* 89.815 × 0.5859 */
+      height: 143px;
+      /* 244.721 × 0.5859 */
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    .arrow-wrapper.hidden {
+      opacity: 0;
+    }
+
+    .arrow-inner {
+      flex-shrink: 0;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .arrow-inner img {
+      position: absolute;
+      display: block;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      max-width: none;
+      object-fit: contain;
+    }
+
+    /* ═══════════════════════════════════════
+   APP BAR（Figma: top=1036 in full, h=100 → h=59)
+   位置：緊接在 banner 後，以 absolute 覆蓋在 banner 底部
+═══════════════════════════════════════ */
+    .app-bar {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 375px;
+      height: 59px;
+      background: #21140d;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 8px;
+    }
+
+    .app-bar-title {
+      flex: 1;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fcfefd;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .app-bar-logo {
+      width: 24px;
+      height: 21px;
+      flex-shrink: 0;
+    }
+
+    .app-bar-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* ═══════════════════════════════════════
+   DRAG ICON（Figma: 200×200, top=856 → 117×117, top=501）
+   Pinned relative to .ad-section (banner wrapper)
+═══════════════════════════════════════ */
+    .ad-section {
+      position: relative;
+    }
+
+    .drag-icon {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      z-index: 40;
+      cursor: grab;
+      touch-action: none;
+      /* left/top set by JS */
+    }
+
+    .drag-icon:active {
+      cursor: grabbing;
+    }
+
+    .drag-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 16px rgba(0, 0, 0, .4));
+    }
+
+    .drag-icon.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* 手指引導圖示（位於罐子左側，輕觸罐身；會跟著 drag-icon 一起移動）
+   Figma: hand 50×40px @ 640 設計 → 約 29×23px @ 375
+   position 對應 drag-icon 內 left≈33px / top≈59px (117×117) */
+    .finger-pointer {
+      position: absolute;
+      left: 8px;
+      top: 56px;
+      width: 30px;
+      height: 24px;
+      z-index: 2;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      transform-origin: 80% 50%;
+      animation: fingerTap 1.1s ease-in-out infinite;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .3));
+    }
+
+    .finger-pointer img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .finger-pointer.hidden {
+      opacity: 0;
+      animation: none;
+    }
+
+    @keyframes fingerTap {
+
+      0%,
+      100% {
+        transform: scale(1) translateX(0);
+      }
+
+      50% {
+        transform: scale(.9) translateX(3px);
+      }
+    }
+
+    /* 解鎖完整後顯示台北標籤 */
+    .city-tag {
+      position: absolute;
+      left: 40px;
+      top: 200px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(0, 0, 0, .35);
+      padding: 2px 6px;
+      border-radius: 3px;
+      z-index: 15;
+      opacity: 0;
+      transition: opacity 0.4s ease 0.2s;
+      pointer-events: none;
+    }
+
+    .city-tag.show {
+      opacity: 1;
+    }
+
+    /* ═══════════════════════════════════════
+   FINAL CUT 結果畫面（覆蓋整個 1136 phone-frame）
+═══════════════════════════════════════ */
+    .final-cut {
+      position: absolute;
+      inset: 0;
+      /* top/right/bottom/left = 0，撐滿 phone-frame 375×1136 */
+      background: #6b1f19;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.7s ease, visibility 0s linear 0.7s;
+      overflow: hidden;
+    }
+
+    .final-cut.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 0.7s ease, visibility 0s linear 0s;
+    }
+
+    .final-banner-img {
+      position: absolute;
+      bottom: 0;
+      /* 置底於 1136 phone-frame */
+      left: 0;
+      width: 100%;
+      height: auto;
+      /* 維持自然比例（375 寬下 ≈666 高） */
+      pointer-events: none;
+      display: block;
+    }
+
+    /* 滿版畫面右上的關閉按鈕（Figma 1941:605: 40×40 @ 584,56 in 640 → 24×24 @ 342,33 in 375） */
+    .btn-close-final {
+      position: absolute;
+      top: 16px;
+      right: 12px;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      z-index: 5;
+      filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .35));
+    }
+
+    .btn-close-final img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="phone-frame">
+
+    <!-- ── 上方文章區 ── -->
+    <div class="supplier-web" id="supplierWeb">
+
+      <div class="article-hero">
+        <img src="images/article-hero.png" alt="">
+      </div>
+
+      <div class="article-body">
+        <p>師資養成、扎根基層選拔優秀選手、打造優良訓練環境，到進入國際賽事，訂定獎勵等方式。</p>
+        <p>針對戴資穎光榮返台，並回到老家高雄</p>
+      </div>
+
+      <!-- 關閉按鈕 -->
+      <div class="btn-close" id="btnClose">
+        <img src="images/btn_close.svg" alt="關閉">
+      </div>
+    </div>
+
+    <!-- ── AD 廣告區（banner + app-bar 包在一起方便定位） ── -->
+    <div class="ad-section" id="adSection">
+
+      <!-- Banner -->
+      <div class="ad-banner" id="adBanner">
+
+        <div class="banner-top-bar"></div>
+        <div class="banner-bottom-bar"></div>
+
+        <!-- 主背景 -->
+        <div class="banner-bg-img">
+          <img src="images/banner-bg-img.png" alt="">
+        </div>
+
+        <!-- 裝飾左 -->
+        <div class="banner-deco-left">
+          <img src="images/banner-deco-left.png" alt="">
+        </div>
+
+        <!-- 裝飾右 -->
+        <div class="banner-deco-right">
+          <img src="images/banner-deco-right.png" alt="">
+        </div>
+
+        <!-- Mark 遮罩 -->
+        <div class="mark-overlay" id="markOverlay">
+          <img src="images/mark.png" alt="">
+        </div>
+
+        <!-- 台北標籤（解鎖後） -->
+        <div class="city-tag" id="cityTag"> </div>
+
+        <!-- 虛線箭頭 -->
+        <div class="arrow-wrapper" id="arrowWrapper">
+          <div class="arrow-inner">
+            <img src="images/arrow.svg" alt="">
+          </div>
+        </div>
+
+      </div><!-- /ad-banner -->
+
+      <!-- App Bar -->
+      <div class="app-bar">
+        <span class="app-bar-title">可口可樂推出 10 款「城市瓶」包裝</span>
+        <div class="app-bar-logo">
+          <img src="images/logo_onead_new.svg" alt="OneAd">
+        </div>
+      </div>
+
+      <!-- 可拖曳 Icon（絕對定位於 .ad-section）-->
+      <div class="drag-icon" id="dragIcon">
+        <img src="images/drag-icon.png" alt="可口可樂城市瓶">
+        <!-- 手指引導圖示（跟著 drag-icon 一起移動） -->
+        <div class="finger-pointer" id="fingerPointer">
+          <img src="images/hand.svg" alt="">
+        </div>
+      </div>
+
+    </div><!-- /ad-section -->
+
+    <!-- ── 滿版結果畫面（解鎖後 1 秒淡入） ── -->
+    <div class="final-cut" id="finalCut">
+      <img class="final-banner-img" src="images/cut-3.png" alt="">
+      <div class="btn-close-final" id="btnCloseFinal">
+        <img src="images/btn_close_dark.svg" alt="關閉">
+      </div>
+    </div>
+
+  </div><!-- /phone-frame -->
+
+  <script>
+    (function () {
+      const icon = document.getElementById('dragIcon');
+      const mark = document.getElementById('markOverlay');
+      const arrow = document.getElementById('arrowWrapper');
+      const finger = document.getElementById('fingerPointer');
+      const cityTag = document.getElementById('cityTag');
+      const finalCut = document.getElementById('finalCut');
+      const btnClose = document.getElementById('btnClose');
+
+      // ── 常數 ─────────────────────────────────────
+      const ICON_W = 117;
+      const ICON_H = 117;
+      const REST_LEFT = (375 - ICON_W) / 2;   // 129px 水平居中
+      // Figma puzzle frame: drag-icon y=864 in 1136 design → y=506 in 666 actual
+      // 扣掉 supplier-web 高度 197 → ad-section 內 y ≈ 309
+      const REST_TOP = 309;
+
+      // mark 遮罩在 .ad-section 的範圍
+      const MARK_L = 31;
+      const MARK_T = 89;
+      const MARK_W = 139;
+      const MARK_H = 247;
+
+      // ── 箭頭方向向量（-110.15deg，沿此軸約束移動）──
+      const ARROW_RAD = -110.15 * Math.PI / 180;
+      const DIR_X = Math.cos(ARROW_RAD);  // ≈ -0.344
+      const DIR_Y = Math.sin(ARROW_RAD);  // ≈ -0.939
+
+      let posX = REST_LEFT;
+      let posY = REST_TOP;
+      let posT = 0;          // 沿箭頭軸的純量位移（正值 = 朝 mark 方向）
+      let isDragging = false;
+      let revealed = false;
+
+      // ── 位置設定 ─────────────────────────────────
+      function setPos(x, y) {
+        posX = x; posY = y;
+        icon.style.left = x + 'px';
+        icon.style.top = y + 'px';
+      }
+
+      function setT(t) {
+        posT = t;
+        setPos(REST_LEFT + t * DIR_X, REST_TOP + t * DIR_Y);
+      }
+
+      icon.style.transform = 'none';
+      icon.style.bottom = 'auto';
+      setT(0);
+
+      // ── AABB 碰撞判斷 ────────────────────────────
+      function hitsMark() {
+        return posX < MARK_L + MARK_W &&
+          posX + ICON_W > MARK_L &&
+          posY < MARK_T + MARK_H &&
+          posY + ICON_H > MARK_T;
+      }
+
+      // ── 沿軸緩動補間 ─────────────────────────────
+      function tweenT(fromT, toT, dur, onDone) {
+        const t0 = performance.now();
+        (function frame(t) {
+          if (isDragging) { onDone(); return; }
+          const p = Math.min((t - t0) / dur, 1);
+          const e = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+          setT(fromT + (toT - fromT) * e);
+          p < 1 ? requestAnimationFrame(frame) : (setT(toT), onDone());
+        })(performance.now());
+      }
+
+      // ── 提示動畫（沿箭頭方向往返兩次）──────────
+      // DIST = icon 到箭頭尾端的距離（沿軸 ≈74px）
+      // 碰撞只在 drag 時檢查，hint 不會意外觸發解鎖
+      function runHint() {
+        const DIST = 74, DUR_UP = 500, DUR_DN = 350;
+        let n = 0;
+        function step() {
+          if (n >= 4 || isDragging || revealed) {
+            setTimeout(() => {
+              if (!revealed) {
+                arrow.classList.add('hidden');
+                finger.classList.add('hidden');
+              }
+            }, 500);
+            return;
+          }
+          const dur = n % 2 === 0 ? DUR_UP : DUR_DN;
+          tweenT(posT, n % 2 === 0 ? DIST : 0, dur,
+            () => { n++; setTimeout(step, 80); });
+        }
+        step();
+      }
+      setTimeout(runHint, 900);
+
+      // ── 拖曳開始 ─────────────────────────────────
+      let startCX = 0, startCY = 0, startPX = 0, startPY = 0, startT = 0;
+      let hasDragged = false;
+      const DRAG_THRESHOLD = 4;   // 位移超過 4px 才算拖曳（避免純點擊誤觸發）
+
+      function getPoint(e) {
+        const s = e.touches ? e.touches[0] : e;
+        return { x: s.clientX, y: s.clientY };
+      }
+
+      function onStart(e) {
+        if (revealed) return;
+        e.preventDefault();
+        isDragging = true;
+        hasDragged = false;
+        const p = getPoint(e);
+        startCX = p.x; startCY = p.y;
+        startPX = posX; startPY = posY;
+        startT = posT;
+        icon.style.transition = 'none';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+      }
+
+      // ── 拖曳移動（自由 XY）──────────────────────
+      function onMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const p = getPoint(e);
+        const dx = p.x - startCX;
+        const dy = p.y - startCY;
+        // 跨過閾值才視為拖曳，並隱藏提示動畫
+        if (!hasDragged && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+          hasDragged = true;
+          arrow.classList.add('hidden');
+          finger.classList.add('hidden');
+        }
+        if (!hasDragged) return;
+        // 邊界放寬：icon 可往右/上/左/下延伸至 70% 出界（只要 30% 留在 ad-section 內）
+        const nx = Math.max(-ICON_W * 0.7, Math.min(375 - ICON_W * 0.3, startPX + dx));
+        const ny = Math.max(-ICON_H * 0.7, Math.min(469 - ICON_H * 0.3, startPY + dy));
+        setPos(nx, ny);
+        // 拖曳過程不檢查 hitsMark；icon 一律在放開後（onEnd）才飛入 mark
+      }
+
+      // ── 拖曳結束（放開滑鼠後 icon 自動飛入 mark 區解鎖） ──────────
+      // 純點擊（沒有實際拖曳）不會觸發解鎖
+      function onEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+        if (!revealed && hasDragged) revealBanner();
+      }
+
+      icon.addEventListener('mousedown', onStart);
+      icon.addEventListener('touchstart', onStart, { passive: false });
+
+      // ── 解鎖 Banner ──────────────────────────────
+      function revealBanner() {
+        if (revealed) return;
+        revealed = true;
+        isDragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+
+        // icon 飛進 mark 中心後淡出
+        icon.style.transition =
+          'left 0.3s cubic-bezier(0.34,1.56,0.64,1),' +
+          'top 0.3s cubic-bezier(0.34,1.56,0.64,1),' +
+          'opacity 0.25s ease 0.28s';
+        setPos(MARK_L + MARK_W / 2 - ICON_W / 2, MARK_T + MARK_H / 2 - ICON_H / 2);
+        setTimeout(() => { icon.classList.add('hidden'); }, 270);
+
+        // mark 消失
+        setTimeout(() => {
+          mark.classList.add('hidden');
+          cityTag.classList.add('show');
+        }, 180);
+
+        // 遮罩消失後 1 秒 → 轉場成滿版
+        // 180ms 延遲啟動淡出 + 450ms 淡出動畫 + 1000ms 等待
+        setTimeout(() => {
+          finalCut.classList.add('show');
+        }, 180 + 450 + 1000);
+      }
+
+      // ── 關閉 ─────────────────────────────────────
+      btnClose.addEventListener('click', () => {
+        document.querySelector('.phone-frame').style.display = 'none';
+      });
+
+      // ── 滿版關閉按鈕 ────────────────────────────
+      document.getElementById('btnCloseFinal').addEventListener('click', () => {
+        document.querySelector('.phone-frame').style.display = 'none';
+      });
+    })();
+  </script>
+</body>
+
+</html>
